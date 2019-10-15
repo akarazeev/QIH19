@@ -8,30 +8,40 @@ In case you want to change API you will need to redefine `typedef` for `context_
 
 
 ```c
-int QKD_OPEN(context_t* context);
+uint32_t QKD_OPEN(uint32_t destination, qos_t QoS, context_t* key_handle);
 ```
 Establishes a set of parameters that define the expected levels of key service.
-- :param `context`:
-- :return: status of operation. In case of errors returns `-1`, otherwise `0`
+- :param `destination`:
+- :param `QoS`:
+- :param `key_handle`:
+- :return: status of operation
 
 ---
 
 ```c
-int QKD_GET_KEY(context_t* context, uint32_t key_size, uint8_t* key_buffer);
+uint32_t QKD_CONNECT(context_t* key_handle, uint32_t timeout);
 ```
-Obtains the required amount of key material requested for this `context`. Each call returns the fixed amount (specified with `key_size`) of requested key stored in `key_buffer`.
-- :param `context`:
-- :param `key_size`: length of `key_buffer` as number of bytes
+- :param `key_handle`:
+- :param `timeout`:
+- :return: status of operation
+
+---
+
+```c
+uint32_t QKD_GET_KEY(context_t* key_handle, uint8_t* key_buffer);
+```
+Obtains the required amount of key material requested for this `key_handle`. Each call returns the fixed amount of requested key stored in `key_buffer`.
+- :param `key_handle`:
 - :param `key_buffer`: place to store the requested key
-- :return: status of operation. In case of errors returns `-1`, otherwise `0`
+- :return: status of operation
 
 ---
 
 ```c
-int QKD_CLOSE(context_t* context);
+uint32_t QKD_CLOSE(context_t* key_handle);
 ```
-Terminates the association established for this `context`.
-- :param `context`:
-- :return: status of operation. In case of errors returns `-1`, otherwise `0`
+Terminates the association established for this `key_handle`.
+- :param `key_handle`:
+- :return: status of operation
 
 ---
