@@ -1,12 +1,14 @@
 #include <stdlib.h>
 
-typedef char key_handle_t[64];
+#define KEYHANDLE_SIZE 64
+
+typedef char key_handle_t[KEYHANDLE_SIZE];
 
 typedef struct {
-  uint32_t requested_length;
-  uint32_t max_bps;
-  uint32_t priority;
-  uint32_t timeout;
+    uint32_t requested_length;
+    uint32_t max_bps;
+    uint32_t priority;
+    uint32_t timeout;
 } qos_t;
 
 uint32_t QKD_OPEN(uint32_t destination, qos_t QoS, key_handle_t* key_handle);
