@@ -32,164 +32,127 @@ uint32_t QKD_CONNECT(context_t* key_handle, uint32_t timeout) {
 	return 0;
 }
 
-uint32_t QKD_GET_KEY(context_t* key_handle, uint8_t** key_buffer) {
+void handle_session(int session_fd) {
+    time_t now=time(0);
+    char buffer[80];
+    size_t length=strftime(buffer,sizeof(buffer),"%a %b %d %T %Y\r\n",localtime(&now));
+    if (length==0) {
+        snprintf(buffer,sizeof(buffer),"Error: buffer overflow\r\n");
+    }
+    size_t index=0;
+    while (index<length) {
+        ssize_t count=write(session_fd,buffer+index,length-index);
+        if (count<0) {
+            error("failed to write to socket");
+        } else {
+            index+=count;
+        }
+    }
+}
 
-  if ((*key_buffer = malloc(sizeof(uint8_t) * KEYSIZE)) == NULL) {
-		return -1;
-	}
-
+uint32_t QKD_GET_KEY(context_t* key_handle, uint8_t* key_buffer) {
   if (key_handle->host == 'c') {
     /* Client */
-
-    int sockfd, n;
-    struct sockaddr_in serveraddr;
-    struct hostent *server;
-    char buf[BUFSIZE];
-
-    /* socket: create the socket */
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0)
-        error("ERROR opening socket");
-
-    /* gethostbyname: get the server's DNS entry */
-    server = gethostbyname(key_handle->hostname);
-    if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host as %s\n", key_handle->hostname);
-        exit(0);
+    const char* hostname="localhost";
+    const char* portname="8080";
+    struct addrinfo hints;
+    memset(&hints,0,sizeof(hints));
+    hints.ai_family=AF_UNSPEC;
+    hints.ai_socktype=SOCK_STREAM;
+    hints.ai_protocol=0;
+    hints.ai_flags=AI_ADDRCONFIG;
+    struct addrinfo* res=0;
+    int err=getaddrinfo(hostname,portname,&hints,&res);
+    if (err!=0) {
+        error("failed to resolve remote socket address");
     }
 
-    /* build the server's Internet address */
-    bzero((char *) &serveraddr, sizeof(serveraddr));
-    serveraddr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr,
-	  (char *)&serveraddr.sin_addr.s_addr, server->h_length);
-    serveraddr.sin_port = htons(key_handle->portno);
+    int fd=socket(res->ai_family,res->ai_socktype,res->ai_protocol);
+    if (fd==-1) {
+        error("ERROR opening socket");
+    }
 
     /* connect: create a connection with the server */
-    if (connect(sockfd, (const struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0)
+    if (connect(fd,res->ai_addr,res->ai_addrlen) < 0)
       error("ERROR connecting");
 
     /* send the message line to the server */
     puts("-> client requested the server to generate key");
+    char buf[BUFSIZE];
     bzero(buf, BUFSIZE);
   	strcpy(buf, "send key plz\n");
 
-    n = write(sockfd, buf, strlen(buf));
+    int n = write(fd, buf, strlen(buf));
     if (n < 0)
       error("ERROR writing to socket");
 
     /* print the server's reply */
     bzero(buf, BUFSIZE);
-    n = read(sockfd, buf, BUFSIZE);
+    n = read(fd, buf, BUFSIZE);
     if (n < 0)
       error("ERROR reading from socket");
-    printf("Echo from server: %s\n", buf);
 
-    *key_buffer = (unsigned char*) buf;
+    for (size_t i = 0; i < KEYSIZE; i++) {
+      key_buffer[i] = buf[i];
+    }
 
-    close(sockfd);
+    close(fd);
 
   } else if (key_handle->host == 's') {
     /* Server */
+    const char* hostname="localhost";
+    const char* portname="8080";
+    struct addrinfo hints;
+    memset(&hints,0,sizeof(hints));
+    hints.ai_family=AF_UNSPEC;
+    hints.ai_socktype=SOCK_STREAM;
+    hints.ai_protocol=0;
+    hints.ai_flags=AI_PASSIVE|AI_ADDRCONFIG;
+    struct addrinfo* res=0;
+    int err=getaddrinfo(hostname,portname,&hints,&res);
+    if (err!=0) {
+        error("ERROR with getaddrinfo");
+    }
 
-    int parentfd; /* parent socket */
-    int childfd; /* child socket */
-    unsigned int clientlen; /* byte size of client's address */
-    struct sockaddr_in serveraddr; /* server's addr */
-    struct sockaddr_in clientaddr; /* client addr */
-    struct hostent *hostp; /* client host info */
+    int server_fd=socket(res->ai_family,res->ai_socktype,res->ai_protocol);
+    if (server_fd==-1) {
+        error("ERROR opening socket");
+    }
+
+    int reuseaddr=1;
+    if (setsockopt(server_fd,SOL_SOCKET,SO_REUSEADDR,&reuseaddr,sizeof(reuseaddr))==-1) {
+        error("ERROR with setsockopt");
+    }
+
+    if (bind(server_fd,res->ai_addr,res->ai_addrlen)==-1) {
+        error("ERROR on binding");
+    }
+
+    freeaddrinfo(res);
+
+    if (listen(server_fd,SOMAXCONN)) {
+        error("FAILED to listen for connections");
+    }
+
+    int session_fd=accept(server_fd,0,0);
+    puts("-> key generated on the server");
     char buf[BUFSIZE]; /* message buffer */
-    char *hostaddrp; /* dotted decimal host addr string */
-    int optval; /* flag value for setsockopt */
-    int n; /* message byte size */
-
-    /*
-     * socket: create the parent socket
-     */
-    parentfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (parentfd < 0)
-      error("ERROR opening socket");
-
-    optval = 1;
-    setsockopt(parentfd, SOL_SOCKET, SO_REUSEADDR,
-  	     (const void *)&optval , sizeof(int));
-
-    bzero((char *) &serveraddr, sizeof(serveraddr));
-
-    /* this is an Internet address */
-    serveraddr.sin_family = AF_INET;
-
-    /* let the system figure out our IP address */
-    serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    /* this is the port we will listen on */
-    serveraddr.sin_port = htons((unsigned short)key_handle->portno);
-
-    /*
-     * bind: associate the parent socket with a port
-     */
-    if (bind(parentfd, (struct sockaddr *) &serveraddr,
-  	   sizeof(serveraddr)) < 0)
-      error("ERROR on binding");
-
-    /*
-     * listen: make this socket ready to accept connection requests
-     */
-    if (listen(parentfd, 5) < 0) /* allow 5 requests to queue up */
-      error("ERROR on listen");
-
-    /*
-     * accept: wait for a connection request
-     */
-    clientlen = sizeof(clientaddr);
-    childfd = accept(parentfd, (struct sockaddr *) &clientaddr, &clientlen);
-    if (childfd < 0)
-      error("ERROR on accept");
-    /*
-     * gethostbyaddr: determine who sent the message
-     */
-    hostp = gethostbyaddr((const char *)&clientaddr.sin_addr.s_addr,
-			  sizeof(clientaddr.sin_addr.s_addr), AF_INET);
-    if (hostp == NULL) {
-      error("ERROR on gethostbyaddr");
-    }
-    hostaddrp = inet_ntoa(clientaddr.sin_addr);
-    if (hostaddrp == NULL) {
-      error("ERROR on inet_ntoa\n");
-    }
-    printf("server established connection with %s (%s)\n",
-	   hostp->h_name, hostaddrp);
-
-    /*
-     * read: read input string from the client
-     */
     bzero(buf, BUFSIZE);
-    n = read(childfd, buf, BUFSIZE);
-    if (n < 0) {
-      error("ERROR reading from socket");
+    for (size_t i = 0; i < KEYSIZE; i++) {
+      key_buffer[i] = rand() % 256;
+      buf[i] = key_buffer[i];
     }
-    printf("server received %d bytes: %s", n, buf);
 
-    /*
-     * write
-     */
-     puts("-> key generated on the server");
-     bzero(buf, BUFSIZE);
-     for (size_t i = 0; i < KEYSIZE; i++) {
-       (*key_buffer)[i] = rand() % 255;
-       buf[i] = (*key_buffer)[i];
-     }
+    int n = write(session_fd, buf, strlen(buf));
+    if (n < 0) {
+      error("ERROR writing to socket");
+    }
 
-     n = write(childfd, buf, strlen(buf));
-     if (n < 0) {
-       error("ERROR writing to socket");
-     }
+    close(session_fd);
+    close(server_fd);
+   }
 
-     close(childfd);
-     close(parentfd);
-  }
-
-	return 0;
+   return 0;
 }
 
 uint32_t QKD_CLOSE(context_t* key_handle) {
