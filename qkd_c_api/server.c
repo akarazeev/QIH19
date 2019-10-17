@@ -12,7 +12,7 @@ int main() {
     qos.priority = 0;
     qos.timeout = 0;
 
-    key_handle_t key_handle = "init_value";
+    key_handle_t key_handle = "init_valu";
 
     QKD_OPEN(destination, qos, &key_handle);
 
@@ -22,7 +22,10 @@ int main() {
 
     /* QKD_GET_KEY */
     uint8_t* key_buffer = (uint8_t*) malloc(sizeof(uint8_t) * KEYSIZE);
-    QKD_GET_KEY(&key_handle, key_buffer);
+    if (QKD_GET_KEY(&key_handle, key_buffer) != 0) {
+        perror("Error");
+    }
+
     printf("-> key: %s\n", key_buffer);
     for (size_t i = 0; i < KEYSIZE; i++) {
         if (i == KEYSIZE - 1) {
@@ -35,7 +38,9 @@ int main() {
 
     strcpy(key_handle, "000111");
 
-    QKD_GET_KEY(&key_handle, key_buffer);
+    if (QKD_GET_KEY(&key_handle, key_buffer) != 0) {
+        perror("Error");
+    }
     printf("-> key: %s\n", key_buffer);
     for (size_t i = 0; i < KEYSIZE; i++) {
         if (i == KEYSIZE - 1) {

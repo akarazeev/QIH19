@@ -88,8 +88,9 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
         if (n < 0) {
             error("ERROR reading from socket");
         }
+
         if (strncmp(buf, "1", 1) == 0) {
-            /* Read the server's reply */
+            /* key_handle is correct */
             bzero(buf, BUFSIZE);
             n = read(sd, buf, BUFSIZE);
             if (n < 0) {
@@ -100,7 +101,9 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
             }
             freeaddrinfo(res);
             close(sd);
-        } else if (strncmp(buf, "0", 1) == 0) {
+            return 0;
+        } else {
+            /* key_handle is different from what was expected */
             printf("--> WRONG key_handle\n");
             freeaddrinfo(res);
             close(sd);
@@ -123,13 +126,10 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
             error("ERROR reading from socket");
         }
 
-        key_handle_t received_key_handle;
-        strncpy(received_key_handle, buf, KEYHANDLE_SIZE);
-        printf("-> Received key_handle: %s\n", received_key_handle);
-
         if (strncmp(*key_handle, buf, KEYHANDLE_SIZE) != 0) {
             /* key_handle is different from what was expected */
             printf("--> WRONG key_handle\n");
+            bzero(buf, BUFSIZE);
             strcpy(buf, "0");
             int n = write(session_fd, buf, strlen(buf));
             if (n < 0) {
@@ -141,6 +141,7 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
             return -1;
         } else {
             /* key_handle is correct */
+            bzero(buf, BUFSIZE);
             strcpy(buf, "1");
             int n = write(session_fd, buf, strlen(buf));
             if (n < 0) {
@@ -148,11 +149,14 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
             }
 
             /* Generating of the key */
+            bzero(buf, BUFSIZE);
             puts("-> key generated on the server");
             for (size_t i = 0; i < KEYSIZE; i++) {
                 key_buffer[i] = (uint8_t) rand() % 256;
-                buf[i] = key_buffer[i];
             }
+            strncpy(buf, (const char *) key_buffer, KEYSIZE);
+            printf("-> key sent: %s\n", buf);
+
             n = write(session_fd, buf, strlen(buf));
             if (n < 0) {
                 error("ERROR writing to socket");
@@ -160,9 +164,9 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
             close(session_fd);
             freeaddrinfo(res);
             close(sd);
+            return 0;
         }
     }
-    return 0;
 }
 
 uint32_t QKD_CLOSE(key_handle_t* key_handle) {
