@@ -35,6 +35,7 @@ uint32_t QKD_OPEN(uint32_t destination, qos_t qos, key_handle_t* key_handle) {
 
 uint32_t QKD_CONNECT(key_handle_t* key_handle, uint32_t timeout) {
     printf("-> Final key_handle: %s\n", *key_handle);
+
     return 0;
 }
 
@@ -42,7 +43,6 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
     const char* hostname = "localhost";
     const char* portname = "8080";
     char buf[BUFSIZE];
-    bzero(buf, BUFSIZE);
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
@@ -75,29 +75,23 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
         }
 
         /* Send key_handle first */
-        strcpy(buf, *key_handle);
-        int n = write(sd, buf, strlen(buf));
+        int n = write(sd, key_handle, KEYHANDLE_SIZE * sizeof(uint8_t));
         if (n < 0) {
             error("ERROR writing to socket");
         }
         puts("-> client requested the server to generate key");
 
         /* Check whether key_handle was accepted */
-        bzero(buf, BUFSIZE);
-        n = read(sd, buf, BUFSIZE);
+        n = read(sd, buf, sizeof(uint8_t));
         if (n < 0) {
             error("ERROR reading from socket");
         }
 
         if (strncmp(buf, "1", 1) == 0) {
             /* key_handle is correct */
-            bzero(buf, BUFSIZE);
-            n = read(sd, buf, BUFSIZE);
+            n = read(sd, key_buffer, KEYSIZE * sizeof(uint8_t));
             if (n < 0) {
                 error("ERROR reading from socket");
-            }
-            for (size_t i = 0; i < KEYSIZE; i++) {
-                key_buffer[i] = (uint8_t) buf[i];
             }
             freeaddrinfo(res);
             close(sd);
@@ -120,8 +114,7 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
         int session_fd = accept(sd, 0, 0);
 
         /* Check whether key_handle is correct */
-        bzero(buf, BUFSIZE);
-        int n = read(session_fd, buf, BUFSIZE);
+        int n = read(session_fd, buf, KEYHANDLE_SIZE * sizeof(uint8_t));
         if (n < 0) {
             error("ERROR reading from socket");
         }
@@ -129,9 +122,7 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
         if (strncmp(*key_handle, buf, KEYHANDLE_SIZE) != 0) {
             /* key_handle is different from what was expected */
             printf("--> WRONG key_handle\n");
-            bzero(buf, BUFSIZE);
-            strcpy(buf, "0");
-            int n = write(session_fd, buf, strlen(buf));
+            int n = write(session_fd, "0", sizeof(uint8_t));
             if (n < 0) {
                 error("ERROR writing to socket");
             }
@@ -141,23 +132,20 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
             return -1;
         } else {
             /* key_handle is correct */
-            bzero(buf, BUFSIZE);
             strcpy(buf, "1");
-            int n = write(session_fd, buf, strlen(buf));
+            int n = write(session_fd, buf, sizeof(uint8_t));
             if (n < 0) {
                 error("ERROR writing to socket");
             }
 
             /* Generating of the key */
-            bzero(buf, BUFSIZE);
             puts("-> key generated on the server");
             for (size_t i = 0; i < KEYSIZE; i++) {
                 key_buffer[i] = (uint8_t) rand() % 256;
             }
-            strncpy(buf, (const char *) key_buffer, KEYSIZE);
-            printf("-> key sent: %s\n", buf);
+            printf("-> key sent: %s\n", key_buffer);
 
-            n = write(session_fd, buf, strlen(buf));
+            n = write(session_fd, key_buffer, KEYSIZE * sizeof(uint8_t));
             if (n < 0) {
                 error("ERROR writing to socket");
             }

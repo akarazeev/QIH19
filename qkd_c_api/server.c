@@ -25,8 +25,6 @@ int main() {
     if (QKD_GET_KEY(&key_handle, key_buffer) != 0) {
         perror("Error");
     }
-
-    printf("-> key: %s\n", key_buffer);
     for (size_t i = 0; i < KEYSIZE; i++) {
         if (i == KEYSIZE - 1) {
             printf("%d\n", key_buffer[i]);
@@ -41,7 +39,6 @@ int main() {
     if (QKD_GET_KEY(&key_handle, key_buffer) != 0) {
         perror("Error");
     }
-    printf("-> key: %s\n", key_buffer);
     for (size_t i = 0; i < KEYSIZE; i++) {
         if (i == KEYSIZE - 1) {
             printf("%d\n", key_buffer[i]);
