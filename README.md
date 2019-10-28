@@ -1,9 +1,5 @@
 # QIH19
 
-In case you want to change API you will need to redefine `typedef` for `context_t`.
-
----
-
 ### Documentation
 
 
