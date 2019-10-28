@@ -11,41 +11,41 @@
 
 #include "qkd_c_api.h"
 
-/* KEYSIZE should not be hard-coded */
-#define KEYSIZE 8
-#define BUFSIZE 1024
-
 void error(char *msg) {
     perror(msg);
     exit(1);
 }
 
-/* You need a local struct to keep track of the requested_length from the qos
- * parameter to use as the key_buffer size */
+qos_t current_qos;
 
-uint32_t QKD_OPEN(uint32_t destination, qos_t qos, key_handle_t* key_handle) {
-    printf("-> Init key_handle: %s\n", *key_handle);
+uint32_t QKD_OPEN(ip_address_t destination, qos_t qos, key_handle_t* key_handle) {
+    current_qos.requested_length = qos.requested_length;
 
-    /* You should compare with an array that is all zeros and you should use
-     * memcmp rather than strcmp */
-    if (strcmp(*key_handle, "init_value") == 0) {
+    int all_zeros = 1;
+    for (size_t i = 0; i < KEYHANDLE_SIZE; i++) {
+        if ((*key_handle)[i] != 0) {
+            all_zeros = 0;
+            break;
+        }
+    }
+
+    if (all_zeros == 1) {
         for (size_t i = 0; i < KEYHANDLE_SIZE; i++) {
             (*key_handle)[i] = (uint8_t) rand() % 256;
         }
-    } else {
-        /* There should be no else branch - if the user has provided a non-zero
-         * handle, just use that */
-        strcpy(*key_handle, "specified_key_handle");
     }
 
-    return 0;
+    return SUCCESS;
 }
 
-uint32_t QKD_CONNECT(key_handle_t* key_handle, uint32_t timeout) {
-    /* Careful with this print statement, key_handle might not be a string */
-    printf("-> Final key_handle: %s\n", *key_handle);
+uint32_t QKD_CONNECT_NONBLOCKING(key_handle_t* key_handle, uint32_t timeout) {
 
-    return 0;
+    return SUCCESS;
+}
+
+uint32_t QKD_CONNECT_BLOCKING(key_handle_t* key_handle, uint32_t timeout) {
+
+    return SUCCESS;
 }
 
 uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
@@ -78,9 +78,7 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
         /************
          *  CLIENT  *
          ************/
-        /* This is normal control flow so I would not print ERROR to the screen
-         * - more like: Port busy - acting as client. */
-        printf("ERROR on binding -> it's a CLIENT\n");
+        printf("Port busy - acting as client\n");
         if (connect(sd, res->ai_addr, res->ai_addrlen) < 0) {
             error("ERROR connecting");
         }
@@ -90,7 +88,6 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
         if (n < 0) {
             error("ERROR writing to socket");
         }
-        puts("-> client requested the server to generate key");
 
         /* Check whether key_handle was accepted */
         n = read(sd, buf, sizeof(uint8_t));
@@ -98,86 +95,74 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
             error("ERROR reading from socket");
         }
 
-        if (strncmp(buf, "1", 1) == 0) {
-            /* key_handle is correct */
-            n = read(sd, key_buffer, KEYSIZE * sizeof(uint8_t));
-            if (n < 0) {
-                error("ERROR reading from socket");
-            }
-            freeaddrinfo(res);
-            close(sd);
-            return 0;
-        } else {
+        if (strncmp(buf, "0", 1) != 0) {
             /* key_handle is different from what was expected */
             printf("--> WRONG key_handle\n");
             freeaddrinfo(res);
             close(sd);
-            return -1;
+            return QKD_GET_KEY_FAILED;
         }
+
+        /* key_handle is correct */
+        n = read(sd, key_buffer, current_qos.requested_length * sizeof(uint8_t));
+        if (n < 0) {
+            error("ERROR reading from socket");
+        }
+        freeaddrinfo(res);
+        close(sd);
+        return SUCCESS;
     } else {
         /************
          *  SERVER  *
          ************/
-        /* Mirroring my comment from above - don't distinguish binding as
-         * success/failure. Instead write "Bound to port XXX. Acting as
-         * server." */
-        printf("SUCCESSFUL binding -> it's a SERVER\n");
+        printf("Open port %s - acting as server\n", portname);
         if (listen(sd, SOMAXCONN)) {
             error("FAILED to listen for connections");
         }
         int session_fd = accept(sd, 0, 0);
 
         /* Check whether key_handle is correct */
-        /* In the read, you should always read bufsize and then later process
-         * only keyhandle_size from it */
-        int n = read(session_fd, buf, KEYHANDLE_SIZE * sizeof(uint8_t));
+        int n = read(session_fd, buf, BUFSIZE);
         if (n < 0) {
             error("ERROR reading from socket");
         }
 
-        /* Use memcmp - your key_handle is a string, but that's not generally
-         * true */
-        if (strncmp(*key_handle, buf, KEYHANDLE_SIZE) != 0) {
+        if (memcmp(*key_handle, buf, KEYHANDLE_SIZE) != 0) {
             /* key_handle is different from what was expected */
-            printf("--> WRONG key_handle\n");
-            int n = write(session_fd, "0", sizeof(uint8_t));
+            n = write(session_fd, "1", sizeof(uint8_t));
             if (n < 0) {
                 error("ERROR writing to socket");
             }
             freeaddrinfo(res);
             close(sd);
             close(session_fd);
-            return -1;
-        } else {
-            /* Yoo don't need an else branch - the if block returns. This saves
-             * you a layer of indentation making code more legible. */
-            /* key_handle is correct */
-            strcpy(buf, "1");
-            int n = write(session_fd, buf, sizeof(uint8_t));
-            if (n < 0) {
-                error("ERROR writing to socket");
-            }
-
-            /* Generating of the key */
-            puts("-> key generated on the server");
-            for (size_t i = 0; i < KEYSIZE; i++) {
-                key_buffer[i] = (uint8_t) rand() % 256;
-            }
-            printf("-> key sent: %s\n", key_buffer);
-
-            n = write(session_fd, key_buffer, KEYSIZE * sizeof(uint8_t));
-            if (n < 0) {
-                error("ERROR writing to socket");
-            }
-            close(session_fd);
-            freeaddrinfo(res);
-            close(sd);
-            return 0;
+            return QKD_GET_KEY_FAILED;
         }
+
+        /* key_handle is correct */
+        strcpy(buf, "0");
+        n = write(session_fd, buf, sizeof(uint8_t));
+        if (n < 0) {
+            error("ERROR writing to socket");
+        }
+
+        /* Key generation */
+        for (size_t i = 0; i < current_qos.requested_length; i++) {
+            key_buffer[i] = (uint8_t) rand() % 256;
+        }
+
+        n = write(session_fd, key_buffer, current_qos.requested_length * sizeof(uint8_t));
+        if (n < 0) {
+            error("ERROR writing to socket");
+        }
+        close(session_fd);
+        freeaddrinfo(res);
+        close(sd);
+        return SUCCESS;
     }
 }
 
 uint32_t QKD_CLOSE(key_handle_t* key_handle) {
 
-    return 0;
+    return SUCCESS;
 }
