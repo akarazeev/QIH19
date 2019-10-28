@@ -1,3 +1,5 @@
+<!-- General comment - there's space to improve the English of this document. I will let you fix all the typos et. yourself and then I'll do a final scan to update some phrasings. -->
+
 # OpenSSL QKD integration
 
 Generally, if one wants to somehow extend the `OpenSSL` lib, there are two possibilities:
@@ -8,6 +10,9 @@ Generally, if one wants to somehow extend the `OpenSSL` lib, there are two possi
 
 `OpenSSL` engine mechanism is the official way of extending the library. This is basically a dynamic library created in a special way that can be connected while `OpenSSL` initialization. Engine can provide a customization to the existing and supported cryptography protocols. The vast majority of popular software, which relies on `OpenSSL`, support this mechanism. There is a special API provided by `OpenSSL` which should be used in each particular case.
 
+<!-- Lot of typos in this paragraph. -->
+<!-- I'd still make it clearer that this way is basically a hack. -->
+<!-- Perhaps start with - Engines for QKD protocols are not currenlty supported in OpenSSL. Nevertheless, for the purpose of the hackathon we can simply "abuse" an existing classical protocol. In our case... -->
 Depite QKD in principal needs a new protocol, it may still be suitable for the hackathon to use an existing classical cryptography protocol. In our case, it makes sense to use the `Diffie-Hellman API` (`DH`). If you prefer to go yhis way, there is no need to implement the whole state machine behind the implemented engine: `OpenSSL` doest it instead of you. The following instructions provide some tips on the `DH OpenSSL` engine.  
 
 In order to overload the Diffie-Hellman protocol it is necessary to set the proper callbacks in the [corresponding structure](https://www.openssl.org/docs/man1.0.2/man3/DH_set_method.html) (`DH_METHOD`):
@@ -17,6 +22,7 @@ In order to overload the Diffie-Hellman protocol it is necessary to set the prop
 
 Here are some useful links:
 
+<!-- Start with the general OpenSSL link - and put the DH links at the end. -->
 - Additional information which could be vital for the implementation process can be found [here](https://linux.die.net/man/3/dh_compute_key).
 - You can also consult with the default `OpenSSL DH` [implementation](https://github.com/openssl/openssl/blob/master/crypto/dh/dh_key.c).
 - Detailed examples of `OpenSSL` engines can be found on a reference implementation of the Russian GOST crypto algorithms [repository](https://github.com/gost-engine/engine). In this repository, you can also find examples of overloading other methods (e.g. `RSA_METHOD`).
@@ -24,6 +30,8 @@ Here are some useful links:
 
 ## OpenSSL state machine
 
+<!-- First sentence doesn't really make sense. -->
+<!-- Otherwise looks good. -->
 As soon as ideally the state machine should be modified to support QKD protocol, you can already hack it by yourself. Considering our desire to run "quantum" HTTPS session, it makes sense to concentrate on TLS state machine modification (in this particular manual we implicitly mean `TLS v1.3`). The corresponding code can be found [here](https://github.com/openssl/openssl/tree/master/ssl/statem). The following places are the intervention points:
 - `ssl/statem/extensions_clnt.c:add_key_share()` method is responsible for adding the temporary key to the [key share extension](https://tools.ietf.org/html/rfc8446#section-4.2.8). At this point some information can be sent from client to server.
 - `ssl/statem/extensions_srvr.c:tls_parse_ctos_key_share()` method is responsible for processing a `key_share extension` received in the `ClientHello`. At this point information received from the client can be processed. Response can be generated.
