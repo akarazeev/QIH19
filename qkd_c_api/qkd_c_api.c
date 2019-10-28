@@ -11,6 +11,7 @@
 
 #include "qkd_c_api.h"
 
+/* KEYSIZE should not be hard-coded */
 #define KEYSIZE 8
 #define BUFSIZE 1024
 
@@ -19,14 +20,21 @@ void error(char *msg) {
     exit(1);
 }
 
+/* You need a local struct to keep track of the requested_length from the qos
+ * parameter to use as the key_buffer size */
+
 uint32_t QKD_OPEN(uint32_t destination, qos_t qos, key_handle_t* key_handle) {
     printf("-> Init key_handle: %s\n", *key_handle);
 
+    /* You should compare with an array that is all zeros and you should use
+     * memcmp rather than strcmp */
     if (strcmp(*key_handle, "init_value") == 0) {
         for (size_t i = 0; i < KEYHANDLE_SIZE; i++) {
             (*key_handle)[i] = (uint8_t) rand() % 256;
         }
     } else {
+        /* There should be no else branch - if the user has provided a non-zero
+         * handle, just use that */
         strcpy(*key_handle, "specified_key_handle");
     }
 
@@ -34,6 +42,7 @@ uint32_t QKD_OPEN(uint32_t destination, qos_t qos, key_handle_t* key_handle) {
 }
 
 uint32_t QKD_CONNECT(key_handle_t* key_handle, uint32_t timeout) {
+    /* Careful with this print statement, key_handle might not be a string */
     printf("-> Final key_handle: %s\n", *key_handle);
 
     return 0;
@@ -69,6 +78,8 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
         /************
          *  CLIENT  *
          ************/
+        /* This is normal control flow so I would not print ERROR to the screen
+         * - more like: Port busy - acting as client. */
         printf("ERROR on binding -> it's a CLIENT\n");
         if (connect(sd, res->ai_addr, res->ai_addrlen) < 0) {
             error("ERROR connecting");
@@ -107,6 +118,9 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
         /************
          *  SERVER  *
          ************/
+        /* Mirroring my comment from above - don't distinguish binding as
+         * success/failure. Instead write "Bound to port XXX. Acting as
+         * server." */
         printf("SUCCESSFUL binding -> it's a SERVER\n");
         if (listen(sd, SOMAXCONN)) {
             error("FAILED to listen for connections");
@@ -114,11 +128,15 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
         int session_fd = accept(sd, 0, 0);
 
         /* Check whether key_handle is correct */
+        /* In the read, you should always read bufsize and then later process
+         * only keyhandle_size from it */
         int n = read(session_fd, buf, KEYHANDLE_SIZE * sizeof(uint8_t));
         if (n < 0) {
             error("ERROR reading from socket");
         }
 
+        /* Use memcmp - your key_handle is a string, but that's not generally
+         * true */
         if (strncmp(*key_handle, buf, KEYHANDLE_SIZE) != 0) {
             /* key_handle is different from what was expected */
             printf("--> WRONG key_handle\n");
@@ -131,6 +149,8 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
             close(session_fd);
             return -1;
         } else {
+            /* Yoo don't need an else branch - the if block returns. This saves
+             * you a layer of indentation making code more legible. */
             /* key_handle is correct */
             strcpy(buf, "1");
             int n = write(session_fd, buf, sizeof(uint8_t));
