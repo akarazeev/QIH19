@@ -11,25 +11,18 @@
 
 #include "qkd_c_api.h"
 
+qos_t current_qos;
+key_handle_t zeros_array = {0};
+
 void error(char *msg) {
     perror(msg);
     exit(1);
 }
 
-qos_t current_qos;
-
 uint32_t QKD_OPEN(ip_address_t destination, qos_t qos, key_handle_t* key_handle) {
     current_qos.requested_length = qos.requested_length;
 
-    int all_zeros = 1;
-    for (size_t i = 0; i < KEYHANDLE_SIZE; i++) {
-        if ((*key_handle)[i] != 0) {
-            all_zeros = 0;
-            break;
-        }
-    }
-
-    if (all_zeros == 1) {
+    if (memcmp(zeros_array, key_handle, KEYHANDLE_SIZE) == 0) {
         for (size_t i = 0; i < KEYHANDLE_SIZE; i++) {
             (*key_handle)[i] = (uint8_t) rand() % 256;
         }
