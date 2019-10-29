@@ -1,7 +1,5 @@
-# QIH19
-[[QKD Application Interface.pdf](QKD_Application_Interface.pdf) or [URL](https://www.etsi.org/deliver/etsi_gs/QKD/001_099/004/01.01.01_60/gs_QKD004v010101p.pdf)]
-
-[📖 [OpenSSL QKD integration manual](OpenSSL_QKD_integration.md)]
+# Quantum Internet Hackathon 2019
+📖 [OpenSSL QKD integration manual](OpenSSL_QKD_integration.md)
 
 ### Client/Server assignment process
 This is a mock API which can be expanded to fit all your needs.
@@ -23,11 +21,15 @@ gcc node_a.c -I qkd_api/qkd_api.h qkd_api/qkd_api.c -o bin/a
 gcc node_b.c -I qkd_api/qkd_api.h qkd_api/qkd_api.c -o bin/b
 ```
 
-Execute `./bin/a`.
+Execute `./bin/a`. Now the application stuck at `QKD_GET_KEY` point - it serves as a server and waits for another node to connect.
 
-Open another terminal session in the same directory and execute `./bin/b`.
+Open another terminal session in the same directory and execute `./bin/b`. The application connects to the server on specified address and port and requests for key to be generated.
+
+---
 
 ### Documentation
+More can be found here: [[QKD Application Interface](QKD_Application_Interface.pdf)] or [[URL](https://www.etsi.org/deliver/etsi_gs/QKD/001_099/004/01.01.01_60/gs_QKD004v010101p.pdf)]
+
 ```c
 uint32_t QKD_OPEN(ip_address_t destination, qos_t qos, key_handle_t* key_handle);
 ```
