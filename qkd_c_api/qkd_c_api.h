@@ -26,12 +26,12 @@ typedef struct {
     char address[IP_ADDR_MAX_LEN];
 } ip_address_t;
 
-uint32_t QKD_OPEN(ip_address_t destination, qos_t QoS, key_handle_t* key_handle);
+uint32_t QKD_OPEN(ip_address_t destination, qos_t QoS, key_handle_t key_handle);
 
-uint32_t QKD_CONNECT_NONBLOCKING(key_handle_t* key_handle, uint32_t timeout);
+uint32_t QKD_CONNECT_NONBLOCKING(key_handle_t key_handle, uint32_t timeout);
 
-uint32_t QKD_CONNECT_BLOCKING(key_handle_t* key_handle, uint32_t timeout);
+uint32_t QKD_CONNECT_BLOCKING(key_handle_t key_handle, uint32_t timeout);
 
-uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer);
+uint32_t QKD_GET_KEY(key_handle_t key_handle, uint8_t* key_buffer);
 
-uint32_t QKD_CLOSE(key_handle_t* key_handle);
+uint32_t QKD_CLOSE(key_handle_t key_handle);

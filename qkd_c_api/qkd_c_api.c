@@ -19,29 +19,29 @@ void error(char *msg) {
     exit(1);
 }
 
-uint32_t QKD_OPEN(ip_address_t destination, qos_t qos, key_handle_t* key_handle) {
+uint32_t QKD_OPEN(ip_address_t destination, qos_t qos, key_handle_t key_handle) {
     current_qos.requested_length = qos.requested_length;
 
     if (memcmp(zeros_array, key_handle, KEYHANDLE_SIZE) == 0) {
         for (size_t i = 0; i < KEYHANDLE_SIZE; i++) {
-            (*key_handle)[i] = (uint8_t) rand() % 256;
+            key_handle[i] = (uint8_t) rand() % 256;
         }
     }
 
     return SUCCESS;
 }
 
-uint32_t QKD_CONNECT_NONBLOCKING(key_handle_t* key_handle, uint32_t timeout) {
+uint32_t QKD_CONNECT_NONBLOCKING(key_handle_t key_handle, uint32_t timeout) {
 
     return SUCCESS;
 }
 
-uint32_t QKD_CONNECT_BLOCKING(key_handle_t* key_handle, uint32_t timeout) {
+uint32_t QKD_CONNECT_BLOCKING(key_handle_t key_handle, uint32_t timeout) {
 
     return SUCCESS;
 }
 
-uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
+uint32_t QKD_GET_KEY(key_handle_t key_handle, uint8_t* key_buffer) {
     const char* hostname = "localhost";
     const char* portname = "8080";
     char buf[BUFSIZE];
@@ -120,7 +120,7 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
             error("ERROR reading from socket");
         }
 
-        if (memcmp(*key_handle, buf, KEYHANDLE_SIZE) != 0) {
+        if (memcmp(key_handle, buf, KEYHANDLE_SIZE) != 0) {
             /* key_handle is different from what was expected */
             n = write(session_fd, "1", sizeof(uint8_t));
             if (n < 0) {
@@ -155,7 +155,7 @@ uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer) {
     }
 }
 
-uint32_t QKD_CLOSE(key_handle_t* key_handle) {
+uint32_t QKD_CLOSE(key_handle_t key_handle) {
 
     return SUCCESS;
 }
