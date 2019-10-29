@@ -4,16 +4,16 @@
 ### Client/Server assignment process
 This is a mock API which can be expanded to fit all your needs.
 
-`Server` is the first application who managed to open connection on a given port. Therefore, `client` is the application who can't open a port (due to it's already opened) and connects to the `server`.
+`Server` is the first application which has managed to open a connection on specified port. Therefore, `client` is the application which couldn't open a port (since it's already opened) and connects to the `server`. After that the `key` is generated on the `server` and exchanged between two nodes.
 
 Limitations of the mock:
-- it is only suitable for local testing only
-- can only run one session at a time on the same `key_handle`
-- `node_a.c` and `node_b.c` are example applications
+- it is only suitable for local testing only,
+- can only run one session at a time on the same `key_handle`,
+- `node_a.c` and `node_b.c` are example applications.
 
 ### Getting started
-Download the repo and compile example:
-```
+Download the repo and compile the example:
+```bash
 git clone https://github.com/akarazeev/QIH19
 cd QIH19/
 mkdir bin/
@@ -23,12 +23,12 @@ gcc node_b.c -I qkd_api/qkd_api.h qkd_api/qkd_api.c -o bin/b
 
 Execute `./bin/a`. Now the application stuck at `QKD_GET_KEY` point - it serves as a server and waits for another node to connect.
 
-Open another terminal session in the same directory and execute `./bin/b`. The application connects to the server on specified address and port and requests for key to be generated.
+Open another terminal session in the same directory and execute `./bin/b`. The application connects to the server on specified address and port and requests for `key` to be generated.
 
 ---
 
 ### Documentation
-More can be found here: [[QKD Application Interface](QKD_Application_Interface.pdf)] or [[URL](https://www.etsi.org/deliver/etsi_gs/QKD/001_099/004/01.01.01_60/gs_QKD004v010101p.pdf)]
+More can be found here: [[QKD_Application_Interface.pdf](QKD_Application_Interface.pdf)] or [[URL](https://www.etsi.org/deliver/etsi_gs/QKD/001_099/004/01.01.01_60/gs_QKD004v010101p.pdf)]
 
 ```c
 uint32_t QKD_OPEN(ip_address_t destination, qos_t qos, key_handle_t* key_handle);
