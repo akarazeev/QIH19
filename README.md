@@ -1,71 +1,85 @@
-# Quantum Internet Hackathon 2019
+# Quantum Internet Hackathon 2019: OpenSSL Integration Challenge
+
+In this challenge the task is to integrate QKD encryption into the OpenSSL
+library. This will allow easy integration of many user applications with QKD
+since many already use OpenSSL for the purposes of encryption. At the end of
+the challenge, you will hopefully be able to demonstrate your integration by
+running a browser session over a TLS connection encrypted with a QKD generated
+key. The quantum network in this hackathon is simulated in the quantum network
+simulator [SimulaQron](https://github.com/SoftwareQuTech/SimulaQron), but we
+will be using the [CQC
+API](https://softwarequtech.github.io/SimulaQron/html/CQCInterface.html) that
+was designed to be supported on the first demonstration network that is
+currently being built in the Netherlands.
+
+## The challenge
+
+The challenge is split up into two parts:
+1. Integrate an abstract QKD API into OpenSSL
+2. Implement QKD in software using the CQC API
+
+The two parts can be done independently and they require different expertise so
+you can chose which one is better aligned with your own interests.
+
+## QKD API
+
+The boundary between the two tasks is a high-level QKD API. We will not be
+designing such an API from scratch, instead we will use one that
+[ETSI](https://www.etsi.org/) has been working on. The fully documented API is
+can be found in this repository
+[QKD_Application_Interface.pdf](QKD_Application_Interface.pdf) or online
+[URL](https://www.etsi.org/deliver/etsi_gs/QKD/001_099/004/01.01.01_60/gs_QKD004v010101p.pdf).
+
+In the first task, the OpenSSL integration, the challenge is to integrate this
+API into OpenSSL. We provide a mock implementation for testing purposes.
+
+In the second task, the QKD implementation, the challenge is to implement a
+full QKD scheme in software that uses the CQC API to interact with a simulated
+network.
+
+Once both tasks are complete, the mock implementation used in the first part
+can be replaced with the full implementation from the second part so that we
+can eventually run a browser session across the network.
+
+Looking ahead, once the demo network is up and running, this OpenSSL
+integration should then be able to run on top of the real thing by replacing
+the simulated network with actual connections to the real hardware.
+
+## OpenSSL integration
+
+The first part is to integrate the QKD API with OpenSSL and demo it by running
+a browser session (or some other user-level application) encrypted with QKD.
+
+You can find the C definition of this API in [the `qkd_api.h`
+header](qkd_api/qkd_api.h) and its documentation in its own
+[README](qkd_api/README.md).
+
+We have written up a small guide that should get you started with the OpenSSL
+code base:
+
 📖 [OpenSSL QKD integration manual](OpenSSL_QKD_integration.md)
 
-### Client/Server assignment process
-This is a mock API which can be expanded to fit all your needs.
+### Mock
 
-`Server` is the first application which has managed to open a connection on specified port. Therefore, `client` is the application which couldn't open a port (since it's already opened) and connects to the `server`. After that the `key` is generated on the `server` and exchanged between two nodes.
+For testing purposes we also provide you with a mock implementation of this
+API. This API does nothing quantum and has limited capabilities, but it should
+be enough for you test the OpenSSL integration without having to wait for the
+full software implementation from the second part. This mock implementation can
+be found in [`qkd_api`](qkd_api) and its documentation is in
+[`MOCK.md`](qkd_api/MOCK.md).
 
-Limitations of the mock:
-- it is only suitable for local testing only,
-- can only run one session at a time on the same `key_handle`,
-- `node_a.c` and `node_b.c` are example applications.
+## QKD Implementation
 
-### Getting started
-Download the repo and compile the example:
-```bash
-git clone https://github.com/akarazeev/QIH19
-cd QIH19/
-mkdir bin/
-gcc node_a.c -I qkd_api/qkd_api.h qkd_api/qkd_api.c -o bin/a
-gcc node_b.c -I qkd_api/qkd_api.h qkd_api/qkd_api.c -o bin/b
-```
+An actual implementation of the QKD API is also needed. The goal here is to
+implement the API defined in [`qkd_api`](qkd_api) such that the OpenSSL
+integration can transparently switch over from the mock implementation to the
+actual QKD implementation.
 
-Execute `./bin/a`. Now the application stuck at `QKD_GET_KEY` point - it serves as a server and waits for another node to connect.
-
-Open another terminal session in the same directory and execute `./bin/b`. The application connects to the server on specified address and port and requests for `key` to be generated.
-
----
-
-### Documentation
-More can be found here: [[QKD_Application_Interface.pdf](QKD_Application_Interface.pdf)] or [[URL](https://www.etsi.org/deliver/etsi_gs/QKD/001_099/004/01.01.01_60/gs_QKD004v010101p.pdf)]
-
-```c
-uint32_t QKD_OPEN(ip_address_t destination, qos_t qos, key_handle_t* key_handle);
-```
-Establishes a set of parameters that define the expected levels of key service.
-- :param `destination`: address of peer application
-- :param `qos`: a structure describing the characteristics of the requested key source
-- :param `key_handle`: a unique handle to identify the group of synchronized bits provided by the QKD key manager to the application
-- :return: status of operation
-
----
-
-```c
-uint32_t QKD_CONNECT_NONBLOCKING(key_handle_t* key_handle, uint32_t timeout);
-uint32_t QKD_CONNECT_BLOCKING(key_handle_t* key_handle, uint32_t timeout);
-```
-- :param `key_handle`: a unique handle to identify the group of synchronized bits provided by the QKD key manager to the application
-- :param `timeout`:
-- :return: status of operation
-
----
-
-```c
-uint32_t QKD_GET_KEY(key_handle_t* key_handle, uint8_t* key_buffer);
-```
-Obtains the required amount of key material requested for this `key_handle`. Each call returns the fixed amount of requested key stored in `key_buffer`.
-- :param `key_handle`: a unique handle to identify the group of synchronized bits provided by the QKD key manager to the application
-- :param `key_buffer`: buffer containing the current stream of keys
-- :return: status of operation
-
----
-
-```c
-uint32_t QKD_CLOSE(key_handle_t* key_handle);
-```
-Terminates the association established for this `key_handle`.
-- :param `key_handle`: a unique handle to identify the group of synchronized bits provided by the QKD key manager to the application
-- :return: status of operation
-
----
+A high-level overview of what is necessary to produce a key using a QKD scheme
+is illustrated [here](https://qkdsimulator.com/qkd_run_example.html). A more
+detailed description with pseudocode can be found in the [Quantum Protocol
+Zoo](https://wiki.veriqloud.fr/index.php?title=BB84_Quantum_Key_Distribution).
+However, you may want to consider basing your implementation on the [E91
+protocol](https://en.wikipedia.org/wiki/Quantum_key_distribution#E91_protocol:_Artur_Ekert_(1991))
+instead of the BB84 protocol since the creation of entangled pairs is a more
+fundamental operation than qubit transmission on the quantum internet.

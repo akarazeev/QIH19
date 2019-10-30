@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "qkd_api/qkd_api.h"
+#include "qkd_api.h"
 
 int main() {
     srand(time(NULL));
