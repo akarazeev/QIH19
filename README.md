@@ -26,9 +26,8 @@ you can chose which one is better aligned with your own interests.
 The boundary between the two tasks is a high-level QKD API. We will not be
 designing such an API from scratch, instead we will use one that
 [ETSI](https://www.etsi.org/) has been working on. The fully documented API is
-can be found in this repository
-[QKD_Application_Interface.pdf](QKD_Application_Interface.pdf) or online
-[URL](https://www.etsi.org/deliver/etsi_gs/QKD/001_099/004/01.01.01_60/gs_QKD004v010101p.pdf).
+can be found [in this repository](QKD_Application_Interface.pdf) or
+[online](https://www.etsi.org/deliver/etsi_gs/QKD/001_099/004/01.01.01_60/gs_QKD004v010101p.pdf).
 
 In the first task, the OpenSSL integration, the challenge is to integrate this
 API into OpenSSL. We provide a mock implementation for testing purposes.

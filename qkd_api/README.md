@@ -1,7 +1,7 @@
 # QKD API
 
 More can be found here:
-* [QKD_Application_Interface.pdf](QKD_Application_Interface.pdf)
+* [QKD Application Interface](QKD_Application_Interface.pdf)
 * [URL](https://www.etsi.org/deliver/etsi_gs/QKD/001_099/004/01.01.01_60/gs_QKD004v010101p.pdf)
 
 ```c
