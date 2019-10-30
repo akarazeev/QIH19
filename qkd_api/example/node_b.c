@@ -1,5 +1,6 @@
 #include <time.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "qkd_api.h"
@@ -22,7 +23,7 @@ int main() {
     QKD_CONNECT_BLOCKING(key_handle, timeout);
 
     /* QKD_GET_KEY */
-    uint8_t* key_buffer = (uint8_t*) malloc(sizeof(uint8_t) * qos.requested_length);
+    char *key_buffer = (char *) malloc(qos.requested_length);
     if (QKD_GET_KEY(key_handle, key_buffer) != 0) {
         perror("Error");
     }
